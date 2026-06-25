@@ -64,60 +64,6 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
     time.sleep(4)
 
     #TODO: The rest is up to the students:
-    # this works but probably could use some tuning
-    zeta = 0.5
-    eta = 0.05
-    d_0 = 0.5
-    rho_0 = 0.2
-    alpha = 0.05
-    success_threshold = 0.1
-
-    def repulsive_f(dist, dir, eta, rho):
-        # dir should point away from the obstacle (obstacle to EE)
-        if dist <= rho:
-            return ( eta * (1/dist - 1/rho) * (1/dist**2) ) * dir
-        return np.array([0, 0, 0])
     
-    def attractive_f(dist, dir, zeta, d):
-        # dir should point toward the destination (EE to destination)
-        if dist < d:
-            return ( zeta * dist ) * dir
-        return ( zeta * d ) * dir
-
-    destination_vec = {
-            "distance": np.linalg.norm(end_pos - start_pos),
-            "direction": (end_pos - start_pos) / np.linalg.norm(end_pos - start_pos)
-        }
-
-    def find_forces(obstacle_vecs, destination_vec):
-        f = np.zeros(3)
-        for o in obstacle_vecs:
-            f += repulsive_f(o["distance"], o["direction"], eta, rho_0)
-        f += attractive_f(destination_vec["distance"], destination_vec["direction"], zeta, d_0)
-            
-        return f
-
-    while destination_vec["distance"] > success_threshold:
-        q_now = QArm_Interface.read_from_arm()
-        p4, _ = QArm_Interface.forward_kinematics(q_now)
-
-        obstacle_vecs = helpers.get_all_obstacle_distances(p4)
-        destination_vec["distance"] = np.linalg.norm(end_pos - p4)
-        destination_vec["direction"] = (end_pos - p4) / np.linalg.norm(end_pos - p4)
-
-        f = find_forces(obstacle_vecs, destination_vec)
-        print(f)
-
-        J = QArm_Interface.Jacobian(q_now)
-        tau = J.T @ np.append(f, 0)
-
-        print(f"obstacle vector: {obstacle_vecs[0]['direction']}")
-        print(f"destination vector: {destination_vec['direction']}")
-        print(f"force: {f}")
-
-        q_new = q_now + alpha * (tau/np.linalg.norm(tau))
-
-        QArm_Interface.write_to_arm(q_new, 1)
-        time.sleep(0.2)
 
 
