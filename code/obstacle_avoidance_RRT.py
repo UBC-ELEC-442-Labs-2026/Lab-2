@@ -8,8 +8,6 @@ from pal.products.qarm import QArm
 from RRT_helpers import RRT_Helpers, Cylinder_Obstacle, RRT_Tree_Manager
 import constants
 
-from geometric_IK import geometric_inv_kin
-
 # Import the QArm interface class
 file_path = constants.path_to_interface
 class_name = "QArm_Lab_interface"
@@ -69,14 +67,16 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
 
     print("here")
 
-    QArm_interface = QArm_Lab_interface(myArm)
+    QArm_interface = QArm_Lab_interface()
+    QArm_interface.attach_QArm(myArm)
+
     _, start_phi = QArm_interface.inverse_kinematics(start_pos, 0, np.array([0, 0, 0, 0]))
     _, destination_phi = QArm_interface.inverse_kinematics(end_pos, 0, np.array([0, 0, 0, 0]))
 
     tree = RRT_Tree_Manager(start_phi)
 
-    QArm_interface.write_to_arm(start_phi, 0.0)
+    QArm_interface.write_to_arm(start_phi)
     time.sleep(4)
 
     #TODO: The rest is up to the students:
-    
+

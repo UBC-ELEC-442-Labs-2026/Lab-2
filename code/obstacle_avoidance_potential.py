@@ -58,12 +58,21 @@ while(int(mode) != 0 and int(mode) != 1):
     mode = input("Enter 1 for real hardware, 0 for simulation: ")
 
 with QArm(hardware=int(mode), readMode=0) as myArm:
-    QArm_Interface = QArm_Lab_interface(myArm)
+    QArm_Interface = QArm_Lab_interface()
+    QArm_Interface.attach_QArm(myArm)
     _, start_phi = QArm_Interface.inverse_kinematics(start_pos, 0, np.array([0, 0, 0, 0]))
-    QArm_Interface.write_to_arm(start_phi, 1.0)
+    QArm_Interface.write_to_arm(start_phi)
     time.sleep(4)
 
+    # Variable setup : it should work with this set, though you may want to tune it yourself
+    zeta = 1
+    eta = 0.01
+    d_0 = 0.3
+    rho_0 = 0.05
+    alpha = 0.02
+    success_threshold = 0.005
+    approx_update_freq = 10 # in hz
     #TODO: The rest is up to the students:
-    
+
 
 
