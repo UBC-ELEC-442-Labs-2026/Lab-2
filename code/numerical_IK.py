@@ -18,7 +18,7 @@ def numeric_inv_kin(p, wrist, phi_prev):
     """
     INPUTS:
         p: desired end-effector position vector expressed in base frame {0}
-        wrist: desired wrist rotation angle gamma in degrees
+        wrist: desired wrist rotation angle gamma in radians
         phi_prev: current/last joint positions
 
     OUTPUTS:
