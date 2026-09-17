@@ -3,22 +3,21 @@ import random
 import importlib.util
 import sys
 import time
+import os
 
 from pal.products.qarm import QArm
 from RRT_helpers import RRT_Helpers, Cylinder_Obstacle, RRT_Tree_Manager
 import constants
 
 # Import the QArm interface class
-file_path = constants.path_to_interface
-class_name = "QArm_Lab_interface"
-module_name = "QArm_Lab_interface_module"
-spec = importlib.util.spec_from_file_location(module_name, file_path)
-module = importlib.util.module_from_spec(spec)
-sys.modules[module_name] = module
-spec.loader.exec_module(module)
-QArm_Lab_interface = getattr(module, class_name)
+interface_directory = os.path.dirname(constants.path_to_interface)
 
-# end of imports
+if interface_directory not in sys.path:
+    sys.path.append(interface_directory)
+
+from QArm_functions import QArm_Lab_interface #type: ignore
+
+# End of imports
 
 # == Obstacle Setup 1 ==
 # obstacles = np.array([
