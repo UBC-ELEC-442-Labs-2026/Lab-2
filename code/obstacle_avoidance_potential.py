@@ -67,25 +67,6 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
 
     # Variable setup : it should work with this set, though you may want to tune it yourself
     zeta = 1
-import importlib.util
-import sys
-from pal.products.qarm import QArm
-import numpy as np
-import time
-
-from potential_fields_helpers import Potential_Fields_helper
-from RRT_helpers import Cylinder_Obstacle
-import constants
-
-# Import the QArm interface class
-file_path = constants.path_to_interface
-class_name = "QArm_Lab_interface"
-module_name = "QArm_Lab_interface_module"
-spec = importlib.util.spec_from_file_location(module_name, file_path)
-module = importlib.util.module_from_spec(spec)
-sys.modules[module_name] = module
-spec.loader.exec_module(module)
-QArm_Lab_interface = getattr(module, class_name)
 
 # == Start Obstacle setup (choose one) ==
 
