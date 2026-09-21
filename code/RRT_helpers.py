@@ -1,7 +1,9 @@
-from pal.products.qarm import QArm
-from hal.products.qarm import QArmUtilities
 import numpy as np
 from scipy.spatial import KDTree
+
+from pal.products.qarm import QArm
+from hal.products.qarm import QArmUtilities
+
 
 class Cylinder_Obstacle:
 

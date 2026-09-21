@@ -1,8 +1,10 @@
-import numpy as np
-import constants
 import importlib.util
 import sys
 import os
+
+import numpy as np
+
+import constants
 
 # Import the QArm interface class
 interface_directory = os.path.dirname(constants.path_to_interface)

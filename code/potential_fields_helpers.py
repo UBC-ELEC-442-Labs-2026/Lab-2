@@ -1,6 +1,8 @@
+import numpy as np
+
 from pal.products.qarm import QArm
 from hal.products.qarm import QArmUtilities
-import numpy as np
+
 
 class Cylinder_Obstacle:
 

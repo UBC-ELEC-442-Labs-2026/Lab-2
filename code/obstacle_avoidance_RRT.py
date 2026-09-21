@@ -1,13 +1,15 @@
-import numpy as np
-import random
 import importlib.util
+import random
 import sys
 import time
 import os
 
-from pal.products.qarm import QArm
-from RRT_helpers import RRT_Helpers, Cylinder_Obstacle, RRT_Tree_Manager
+import numpy as np
+
 import constants
+from pal.products.qarm import QArm
+from RRT_helpers import Cylinder_Obstacle, RRT_Helpers, RRT_Tree_Manager
+
 
 # Import the QArm interface class
 interface_directory = os.path.dirname(constants.path_to_interface)
@@ -19,12 +21,15 @@ from QArm_functions import QArm_Lab_interface #type: ignore
 
 # End of imports
 
+
+# == Start Obstacle setup (choose one) ==
+
 # == Obstacle Setup 1 ==
-# obstacles = np.array([
-#             Cylinder_Obstacle(np.array([0.65, 0.0, 0.0]), np.array([0.65, 0.0, 1.0]), 0.25),
-#             ])
-# start_pos = np.array([0.5, -0.375, 0.3])
-# end_pos = np.array([0.5, 0.375, 0.3])
+obstacles = np.array([
+            Cylinder_Obstacle(np.array([0.65, 0.0, 0.0]), np.array([0.65, 0.0, 1.0]), 0.25),
+            ])
+start_pos = np.array([0.5, -0.375, 0.3])
+end_pos = np.array([0.5, 0.375, 0.3])
 
 # == Obstacle Setup 2 ==
 # obstacles = np.array([
@@ -35,19 +40,17 @@ from QArm_functions import QArm_Lab_interface #type: ignore
 # end_pos = np.array([0.54, 0.28, 0.3])
 
 # == Obstacle Setup 3 ==
-obstacles = np.array([
-            Cylinder_Obstacle(np.array([0.45, -0.05, 0.0]), np.array([0.45, -0.05, 0.12]), 0.075), 
-            Cylinder_Obstacle(np.array([0.45, 0.05, 0.0]), np.array([0.45, 0.05, 0.12]), 0.075), 
-            ])
-start_pos = np.array([0.275, 0, 0.1])
-end_pos = np.array([0.7, 0, 0.1])
-
+# obstacles = np.array([
+#             Cylinder_Obstacle(np.array([0.45, -0.05, 0.0]), np.array([0.45, -0.05, 0.12]), 0.075), 
+#             Cylinder_Obstacle(np.array([0.45, 0.05, 0.0]), np.array([0.45, 0.05, 0.12]), 0.075), 
+#             ])
+# start_pos = np.array([0.275, 0, 0.1])
+# end_pos = np.array([0.7, 0, 0.1])
 
 # == end obstacle setup ==
 
-#find start and end positions in joint space, using your geometric inverse kinematic function
-# start_phi = geometric_inv_kin(start_pos, 0, np.radians(np.array([-45.0, 50.0, -43.0, 0.0])))
-# destination_phi = geometric_inv_kin(end_pos, 0, np.radians(np.array([45.0, 50.0, -43.0, 0.0])))
+
+# Find start and end positions in joint space, using your geometric inverse kinematic function
 
 joint_limits = np.radians(np.array([
             np.array([-170.0, -85.0, -95.0, -160.0]),
@@ -56,15 +59,12 @@ joint_limits = np.radians(np.array([
 
 helpers = RRT_Helpers(obstacles)
 
-
 mode = "-1"
 while(int(mode) != 0 and int(mode) != 1):
     mode = input("Enter 1 for real hardware, 0 for simulation: ")
 
 
 with QArm(hardware=int(mode), readMode=0) as myArm:
-
-    print("here")
 
     QArm_interface = QArm_Lab_interface()
     QArm_interface.attach_QArm(myArm)
@@ -133,6 +133,8 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
     # 4. Check obstacle collision using helpers.is_configuration_colliding(q_new)
     # 5. If safe, add q_new to tree using tree.add_node(q_new, parent_index=near_idx)
     # 6. Stop when q_new is within success_threshold of destination_phi
+
+    near_idx = None
 
     # == end student section ==
 
