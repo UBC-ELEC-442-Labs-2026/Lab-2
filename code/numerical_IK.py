@@ -1,22 +1,26 @@
-import numpy as np
-import constants
 import importlib.util
 import sys
+import os
 
-file_path = constants.path_to_interface
-class_name = "QArm_Lab_interface"
-module_name = "QArm_Lab_interface_module"
-spec = importlib.util.spec_from_file_location(module_name, file_path)
-module = importlib.util.module_from_spec(spec)
-sys.modules[module_name] = module
-spec.loader.exec_module(module)
-QArm_Lab_interface = getattr(module, class_name)
+import numpy as np
+
+import constants
+
+# Import the QArm interface class
+interface_directory = os.path.dirname(constants.path_to_interface)
+
+if interface_directory not in sys.path:
+    sys.path.append(interface_directory)
+
+from QArm_functions import QArm_Lab_interface #type: ignore
+
+# End of imports
 
 def numeric_inv_kin(p, wrist, phi_prev):
     """
     INPUTS:
         p: desired end-effector position vector expressed in base frame {0}
-        wrist: desired wrist rotation angle gamma in degrees
+        wrist: desired wrist rotation angle gamma in radians
         phi_prev: current/last joint positions
 
     OUTPUTS:

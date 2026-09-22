@@ -1,0 +1,7 @@
+{
+    "python.defaultInterpreterPath": "C:\\ProgramData\\Qarm\\Python\\venv\\Scripts\\python.exe",
+    "python.useEnvironmentsExtension": true,
+    "python.analysis.extraPaths": [
+        "C:\\QArmLab\\lab-machine-env\\QArm-control"
+    ]
+}

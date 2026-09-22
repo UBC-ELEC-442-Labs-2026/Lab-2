@@ -3,11 +3,12 @@ import numpy as np
 def geometric_inv_kin(p, wrist, phi_prev):
     """
     INPUTS:
-        p: end-effector position vector expressed in base frame {0}
-        wrist: wrist rotation angle gamma
+        p: desired end-effector position vector expressed in base frame {0}
+        wrist: desired wrist rotation angle gamma in radians
+        phi_prev: current/last joint positions
 
     OUTPUTS:
-        phiOptimal : Best solution depending on phi_prev
+        phiOptimal : Best valid solution depending on phi_prev
         phi: All four Inverse Kinematics solutions as a 4x4 matrix. Each col is a solution.
     """
 
