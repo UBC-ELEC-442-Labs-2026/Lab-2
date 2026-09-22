@@ -29,14 +29,6 @@ end_pos = np.array([0.5, 0.375, 0.3])
 
 # == Obstacle Setup 2 ==
 # obstacles = np.array([
-#             Cylinder_Obstacle(np.array([0.45, -0.25, 0.0]), np.array([0.45, -0.25, 1.0]), 0.1), 
-#             Cylinder_Obstacle(np.array([0.3, 0.15, 0.0]), np.array([0.3, 0.15, 0.25]), 0.075), 
-#             ])
-# start_pos = np.array([0.36, -0.435, 0.09])
-# end_pos = np.array([0.54, 0.28, 0.3])
-
-# == Obstacle Setup 3 ==
-# obstacles = np.array([
 #             Cylinder_Obstacle(np.array([0.45, -0.05, 0.0]), np.array([0.45, -0.05, 0.12]), 0.075), 
 #             Cylinder_Obstacle(np.array([0.45, 0.05, 0.0]), np.array([0.45, 0.05, 0.12]), 0.075), 
 #             ])
