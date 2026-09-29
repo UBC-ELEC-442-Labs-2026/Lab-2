@@ -1,18 +1,13 @@
-import importlib.util
 import sys
 import os
 
 import numpy as np
 
-import constants
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
-# Import the QArm interface class
-interface_directory = os.path.dirname(constants.path_to_interface)
-
-if interface_directory not in sys.path:
-    sys.path.append(interface_directory)
-
-from QArm_functions import QArm_Lab_interface #type: ignore
+from helpers.numeric_inv_kin_helpers import Numeric_IK_helper
 
 # End of imports
 
@@ -39,25 +34,26 @@ def numeric_inv_kin(p, wrist, phi_prev):
     LAMBDA_2 = np.sqrt(L_2**2 + L_3**2)
     LAMBDA_3 = L_4 + L_5
 
-    QArm_interface = QArm_Lab_interface()
+    num_ik_helper = Numeric_IK_helper()
 
     #* Use this to get the inverse of the 4x4 analytical Jacobian:
-    #J_inv = QArm_interface.Inv_Jacobian(phi)
+    #J = num_ik_helper.Jacobian(phi)
 
     #* Use this to preform forward kinematics: p4 is the position of the end effector
-    # p4, _ = QArm_interface.forward_kinematics(phi)
+    # p4, _ = num_ik_helper.forward_kinematics(phi)
 
-    #* Use this to check the joint limits: True means okay position
-    # QArm_interface.check_joint_limits(phi_new)
+    #* Use this to check the joint limits: True means valid position, False means joint limits exceeded
+    # num_ik_helper.check_joint_limits(phi_new)
 
+    # Solver Parameters
     success_thresh = 0.0001
     step_size_scaling = 0.01
     attempt_limit = 1000
 
+    phi_new = phi_prev.copy()
+
     # == start student section ==
     #TODO: Implement numerical inverse kinematics
-
-    phi_new = phi_prev.copy()
 
     # == end student section ==
 

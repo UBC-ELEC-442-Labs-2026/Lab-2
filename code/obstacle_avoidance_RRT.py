@@ -6,9 +6,14 @@ import os
 
 import numpy as np
 
-import constants
+#import constants
 from pal.products.qarm import QArm
-from RRT_helpers import Cylinder_Obstacle, RRT_Helpers, RRT_Tree_Manager
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from helpers.RRT_helpers import Cylinder_Obstacle, RRT_Helpers, RRT_Tree_Manager
 
 
 # Import the QArm interface class
@@ -32,12 +37,12 @@ start_pos = np.array([0.5, -0.375, 0.3])
 end_pos = np.array([0.5, 0.375, 0.3])
 
 # == Obstacle Setup 2 ==
-obstacles = np.array([
-            Cylinder_Obstacle(np.array([0.45, -0.05, 0.0]), np.array([0.45, -0.05, 0.12]), 0.075), 
-            Cylinder_Obstacle(np.array([0.45, 0.05, 0.0]), np.array([0.45, 0.05, 0.12]), 0.075), 
-            ])
-start_pos = np.array([0.275, 0, 0.1])
-end_pos = np.array([0.7, 0, 0.1])
+# obstacles = np.array([
+#             Cylinder_Obstacle(np.array([0.45, -0.05, 0.0]), np.array([0.45, -0.05, 0.12]), 0.075), 
+#             Cylinder_Obstacle(np.array([0.45, 0.05, 0.0]), np.array([0.45, 0.05, 0.12]), 0.075), 
+#             ])
+# start_pos = np.array([0.275, 0, 0.1])
+# end_pos = np.array([0.7, 0, 0.1])
 
 
 # == end obstacle setup ==

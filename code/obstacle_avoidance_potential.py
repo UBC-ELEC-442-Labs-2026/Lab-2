@@ -5,10 +5,15 @@ import os
 
 import numpy as np
 
-import constants
-from potential_fields_helpers import Potential_Fields_helper
+# import constants
 from pal.products.qarm import QArm
-from RRT_helpers import Cylinder_Obstacle
+
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
+
+from helpers.RRT_helpers import Cylinder_Obstacle
+from helpers.potential_fields_helpers import Potential_Fields_helper
 
 
 # Import the QArm interface class
