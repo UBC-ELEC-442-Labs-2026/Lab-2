@@ -5,7 +5,7 @@ import os
 
 import numpy as np
 
-# import constants
+import constants
 from pal.products.qarm import QArm
 
 PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
