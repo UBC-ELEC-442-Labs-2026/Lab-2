@@ -27,23 +27,25 @@ from QArm_functions import QArm_Lab_interface #type: ignore
 # End of imports
 
 
-# == Start Obstacle setup (choose one) ==
+# == Start Obstacle setup ==
 
 # == Obstacle Setup 1 ==
-obstacles = np.array([
+obstacle_setup_1 = np.array([
             Cylinder_Obstacle(np.array([0.65, 0.0, 0.0]), np.array([0.65, 0.0, 1.0]), 0.25),
             ])
 start_pos = np.array([0.5, -0.375, 0.3])
 end_pos = np.array([0.5, 0.375, 0.3])
 
 # == Obstacle Setup 2 ==
-# obstacles = np.array([
-#             Cylinder_Obstacle(np.array([0.45, -0.05, 0.0]), np.array([0.45, -0.05, 0.12]), 0.075), 
-#             Cylinder_Obstacle(np.array([0.45, 0.05, 0.0]), np.array([0.45, 0.05, 0.12]), 0.075), 
-#             ])
-# start_pos = np.array([0.275, 0, 0.1])
-# end_pos = np.array([0.7, 0, 0.1])
+obstacle_setup_2 = np.array([
+            Cylinder_Obstacle(np.array([0.45, -0.05, 0.0]), np.array([0.45, -0.05, 0.12]), 0.075), 
+            Cylinder_Obstacle(np.array([0.45, 0.05, 0.0]), np.array([0.45, 0.05, 0.12]), 0.075), 
+            ])
+start_pos = np.array([0.275, 0, 0.1])
+end_pos = np.array([0.7, 0, 0.1])
 
+# Choose which obstacle setup to use
+obstacles = obstacle_setup_1
 
 # == end obstacle setup ==
 
