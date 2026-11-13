@@ -18,18 +18,21 @@ class Numeric_IK_helper():
     #endregion
 
     def forward_kinematics(self, phi):
-        """ QUANSER_ARM_FPK v 1.0 - 30th August 2020
+        """
+        Forward kinematics of the QArm.
 
-        REFERENCE:
-        Chapter 3. Forward Kinematics
-        Robot Dynamics and Control, Spong, Vidyasagar, 1989
+        Parameters
+        ----------
+        phi : np.ndarray, shape (4,)
+            Joint angles [base, shoulder, elbow, wrist], in radians.
 
-        INPUTS:
-        phi     : Alternate joint angles vector 4 x 1
-
-        OUTPUTS:
-        p4      : End-effector frame {4} position vector expressed in base frame {0}
-        R04     : rotation matrix from end-effector frame {4} to base frame {0}"""
+        Returns
+        -------
+        p4 : np.ndarray, shape (3,)
+            End-effector position [x, y, z] in the base frame {0}, in metres.
+        R04 : np.ndarray, shape (3, 3)
+            Rotation from the end-effector frame {4} to the base frame {0}.
+        """
 
         # From phi space to theta space
         theta = phi.copy()
@@ -67,10 +70,22 @@ class Numeric_IK_helper():
         return p4, R04
 
     def check_joint_limits(self, phi):
+        """
+        Check that every joint is within its limits.
 
+        Parameters
+        ----------
+        phi : np.ndarray, shape (4,)
+            Joint angles [base, shoulder, elbow, wrist], in radians.
+
+        Returns
+        -------
+        bool
+            True if every joint is within its limits, False otherwise.
+        """
         flag = True
         if phi[0] > 170*np.pi/180 or phi[0] < -170*np.pi/180 \
-            or phi[1] > 80*np.pi/180 or phi[1] < -80*np.pi/180 \
+            or phi[1] > 85*np.pi/180 or phi[1] < -85*np.pi/180 \
             or phi[2] > 75*np.pi/180 or phi[2] < -95*np.pi/180 \
             or phi[3] > 160*np.pi/180 or phi[3] < -160*np.pi/180:
 
@@ -164,16 +179,34 @@ class Numeric_IK_helper():
         return J, c, r, J_inv
 
     def Jacobian(self, phi):
-        """Implements the jacobian matrix using theta for the QArm Mini
+        """
+        The 4x4 analytical Jacobian of the QArm.
 
-        Parameters:
+        Parameters
+        ----------
+        phi : np.ndarray, shape (4,)
+            Joint angles [base, shoulder, elbow, wrist], in radians.
 
-        theta (): Alternate joint angle vector 4 x 1
-
-        Return:
-            - **J** *()* - Best solution depending on theta_prev
-            - **c** *()* - condition number of the jacobian matrix
-            - **r** *()* - rank of the jacobian matrix
-            - **J_inv** *()* - inverse of the jacobian matrix
+        Returns
+        -------
+        np.ndarray, shape (4, 4)
+            Rows 1 to 3 map joint velocities to end-effector velocity [x, y, z];
+            row 4 is the wrist.
         """
         return self.differential_kinematics(phi)[0]
+
+    def Inv_Jacobian(self, phi):
+        """
+        The inverse of the 4x4 analytical Jacobian of the QArm.
+
+        Parameters
+        ----------
+        phi : np.ndarray, shape (4,)
+            Joint angles [base, shoulder, elbow, wrist], in radians.
+
+        Returns
+        -------
+        np.ndarray, shape (4, 4)
+            Inverse of Jacobian(phi). Very large near a singularity.
+        """
+        return self.differential_kinematics(phi)[3]

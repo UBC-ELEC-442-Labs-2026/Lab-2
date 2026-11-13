@@ -83,14 +83,20 @@ class Potential_Fields_helper:
     
 
     
-    def get_all_obstacle_distances(self, p4):
+    def get_all_obstacle_distances(self, p4: np.ndarray) -> list[dict]:
         """
-        Queries all environment obstacles relative to the current End-Effector position.
-        
-        Returns:
-        A list of dictionaries, where each entry contains:
-        - 'distance': Distance to the skin of that obstacle (float)
-        - 'direction': Normalized direction vector pointing toward safety (np.array)
+        Distance and direction from the end effector to every obstacle.
+
+        Parameters
+        ----------
+        p4 : np.ndarray, shape (3,)
+            End-effector position [x, y, z] in the base frame {0}, in metres.
+
+        Returns
+        -------
+        list of dict, one per obstacle:
+            "distance" : float, distance from the end effector to the obstacle's surface (m)
+            "direction" : np.ndarray, shape (3,), unit vector from the obstacle toward the end effector
         """
         obstacle_data = []
         for obst in self.obstacles:

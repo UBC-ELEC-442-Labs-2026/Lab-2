@@ -1,15 +1,25 @@
 import numpy as np
 
-def geometric_inv_kin(p, wrist, phi_prev):
+def geometric_inv_kin(p: np.ndarray, wrist: float, phi_prev: np.ndarray):
     """
-    INPUTS:
-        p: desired end-effector position vector expressed in base frame {0}
-        wrist: desired wrist rotation angle gamma in radians
-        phi_prev: current/last joint positions
+    Inverse kinematics of the QArm by the geometric method.
 
-    OUTPUTS:
-        phiOptimal : Best valid solution depending on phi_prev
-        phi: All four Inverse Kinematics solutions as a 4x4 matrix. Each col is a solution.
+    Parameters
+    ----------
+    p : np.ndarray, shape (3,)
+        Desired end-effector position [x, y, z] in the base frame {0}, in metres.
+    wrist : float
+        Desired wrist angle, in radians.
+    phi_prev : np.ndarray, shape (4,)
+        Current joint angles [base, shoulder, elbow, wrist], in radians.
+
+    Returns
+    -------
+    phi_candidates : np.ndarray, shape (4, 4), or "Fail"
+        The four mathematical solutions (candidates), one per column. Some may
+        break the joint limits. "Fail" if the target is out of reach.
+    phi_best : np.ndarray, shape (4,), or "Fail"
+        The valid candidate closest to phi_prev, or "Fail" if no candidate is valid.
     """
 
     L_1 = 0.1400
@@ -22,6 +32,10 @@ def geometric_inv_kin(p, wrist, phi_prev):
     LAMBDA_1 = L_1
     LAMBDA_2 = np.sqrt(L_2**2 + L_3**2)
     LAMBDA_3 = L_4 + L_5
+
+    # Joint limits in radians, in order [base, shoulder, elbow, wrist] (Lab 2 PDF, joint limits table)
+    JOINT_MIN = np.radians([-170, -85, -95, -160])
+    JOINT_MAX = None  # TODO: the maximum joint angles
 
     # Initialization
     theta   = np.zeros((4, 4), dtype=np.float64)
@@ -54,6 +68,16 @@ def geometric_inv_kin(p, wrist, phi_prev):
 
     A, C, H, D1, D2, F = inv_kin_setup(p)
 
+    # == start student section ==
+
+    # Out of reach: the square roots below would be of a negative number
+    if C**2 - F**2 < 0:
+        print("geometric_inv_kin: target is out of reach")
+        # TODO: return the appropriate result for both outputs
+        pass
+
+    # ==  end student section  ==
+
     # Joint 3 solution:
     theta[2,0] = 2*np.arctan2( C + np.sqrt(C**2 - F**2) , F )
     theta[2,1] = 2*np.arctan2( C - np.sqrt(C**2 - F**2) , F )
@@ -82,19 +106,46 @@ def geometric_inv_kin(p, wrist, phi_prev):
     phi[2,:] = theta[2,:] + BETA
     phi[3,:] = wrist*np.ones((4))
 
-    phi = np.mod(phi + np.pi, 2*np.pi) - np.pi
+    phi_candidates = np.mod(phi + np.pi, 2*np.pi) - np.pi   # wrap every angle to [-pi, pi)
 
 
     # == start student section ==
 
-    #TODO: implement a way to find the optimal solution given phi_prev
-    phiOptimal = phi[:,0]
+    # Note two additional TODOs above
 
-    # == end student section ==
+    # Set phi_best to the column of phi_candidates that
+    #   1. is valid (physically achievable), and
+    #   2. of those, is the closest (np.linalg.norm).
+    # If those conditions cannot be met, set phi_best = "Fail".
+
+    phi_best = phi_candidates[:, 0]   # placeholder
+
+    # ==  end student section  ==
 
 
-    return phi, phiOptimal
+    return phi_candidates, phi_best
 
 
 if __name__ == "__main__":
-    print("Test your function here")
+    # test cases
+    test_cases = [
+        # (description,             p,                  wrist,  phi_prev)
+        ("Normal",                 [0.3, 0.4, 0.35],    0.87,  [0, 0, 0, 0]),
+        ("Invalid wrist",          [0.3, 0.4, 0.35],    3.0,   [0, 0, 0, 0]),
+        ("Negative position",      [-0.2, -0.2, 0.6],  -2.62,  [0, 0, 0, 0]),
+        ("Out of workspace",       [0.75, 0.3, 0.5],    0,     [0, 0, 0, 0]),
+        ("Singularity at end",     [0, 0, 0.75],        0,     [0, 0, 0, 0]),
+        ("Singularity near start", [0.2, 0.2, 0.3],     0,     [1.57, -0.82, -0.17, 0]),
+        ("Singularity in between", [0.01, -0.455, 0.5], 0,     [np.pi/2, 0, -0.0254, 0]),
+    ]
+
+    # Printing shows 2 decimal places
+    np.set_printoptions(precision=2, suppress=True)
+
+    for description, p, wrist, phi_prev in test_cases:
+        print(f"--- {description}: p = {p}, wrist = {wrist}, phi_prev = {np.array(phi_prev, dtype=float)}")
+        phi_candidates, phi_best = geometric_inv_kin(np.array(p), wrist, np.array(phi_prev))
+        print("phi_candidates:")
+        print(phi_candidates)
+        print("phi_best:", phi_best)
+        print()

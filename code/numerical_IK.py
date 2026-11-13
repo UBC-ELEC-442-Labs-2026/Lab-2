@@ -11,60 +11,74 @@ from helpers.numeric_inv_kin_helpers import Numeric_IK_helper
 
 # End of imports
 
-def numeric_inv_kin(p, wrist, phi_prev):
+def numeric_inv_kin(p: np.ndarray, wrist: float, phi_prev: np.ndarray):
     """
-    INPUTS:
-        p: desired end-effector position vector expressed in base frame {0}
-        wrist: desired wrist rotation angle gamma in radians
-        phi_prev: current/last joint positions
+    Inverse kinematics of the QArm by the numerical (Newton-Raphson) method.
 
-    OUTPUTS:
-        phi_new : inverse kinematics solution
+    Starting from phi_prev, repeatedly steps the joint angles toward the target
+    using the inverse Jacobian, until the end effector reaches p.
+
+    Parameters
+    ----------
+    p : np.ndarray, shape (3,)
+        Desired end-effector position [x, y, z] in the base frame {0}, in metres.
+    wrist : float
+        Desired wrist angle, in radians.
+    phi_prev : np.ndarray, shape (4,)
+        Current joint angles [base, shoulder, elbow, wrist], in radians.
+        The solver starts from here.
+
+    Returns
+    -------
+    phi_new : np.ndarray, shape (4,), or "Fail"
+        Joint angles that reach p, or "Fail" if a step breaks the joint limits
+        or the solver hasn't converged after attempt_limit steps.
     """
-
-    # Initilization
-    L_1 = 0.1400
-    L_2 = 0.3500
-    L_3 = 0.0500
-    L_4 = 0.2500
-    L_5 = 0.1500
-    BETA = np.arctan(L_3/L_2)
-
-    LAMBDA_1 = L_1
-    LAMBDA_2 = np.sqrt(L_2**2 + L_3**2)
-    LAMBDA_3 = L_4 + L_5
 
     num_ik_helper = Numeric_IK_helper()
 
-    #* Use this to get the inverse of the 4x4 analytical Jacobian:
-    #J = num_ik_helper.Jacobian(phi)
+    # Helper functions (phi is a vector of 4 joint angles):
+    #   J_inv = num_ik_helper.Inv_Jacobian(phi)        inverse of the 4x4 analytical Jacobian
+    #   p4, _ = num_ik_helper.forward_kinematics(phi)  p4 is the end-effector position [x, y, z]
+    #   num_ik_helper.check_joint_limits(phi)          True if every joint is within its limits
 
-    #* Use this to preform forward kinematics: p4 is the position of the end effector
-    # p4, _ = num_ik_helper.forward_kinematics(phi)
+    # Solver parameters
+    success_thresh = 0.0001     # stop once the error is smaller than this
+    step_size_scaling = 0.01    # alpha in the update equation
+    attempt_limit = 2000        # maximum number of update steps
 
-    #* Use this to check the joint limits: True means valid position, False means joint limits exceeded
-    # num_ik_helper.check_joint_limits(phi_new)
-
-    # Solver Parameters
-    success_thresh = 0.0001
-    step_size_scaling = 0.01
-    attempt_limit = 1000
-
-    phi_new = phi_prev.copy()
+    phi_new = np.array(phi_prev, dtype=float)   # the solver's starting point: a copy of phi_prev
 
     # == start student section ==
-    #TODO: Implement numerical inverse kinematics
 
-    # == end student section ==
+    # Repeat the update equation from the Numerical Method section until the error is
+    # smaller than success_thresh. Set phi_new = "Fail" if a step breaks the joint
+    # limits, or if attempt_limit steps go by without converging.
+
+    # ==  end student section  ==
 
     return phi_new
 
 
 if __name__ == "__main__":
-    print("Test your function here")
-    p = np.array([0.0, -0.45, 0.5]) # desired end-effector position
-    wrist = 0 # desired wrist position in radians
-    phi_prev = np.radians(np.array([0.0, 0.0, 0.0, 0.0])) # current joint positions
+    # The Exercise 2 test cases from the Lab 2 PDF. Run this file and compare the
+    # printed results with the table. You don't need to change anything below.
+    test_cases = [
+        # (description,             p,                   wrist, phi_prev)
+        ("Normal",                 [0.3, 0.4, 0.35],    0.87,  [0, 0, 0, 0]),
+        ("Invalid wrist",          [0.3, 0.4, 0.35],    3.0,   [0, 0, 0, 0]),
+        ("Negative position",      [-0.2, -0.2, 0.6],  -2.62,  [0, 0, 0, 0]),
+        ("Out of workspace",       [0.75, 0.3, 0.5],    0,     [0, 0, 0, 0]),
+        ("Singularity at end",     [0, 0, 0.75],        0,     [0, 0, 0, 0]),
+        ("Singularity near start", [0.2, 0.2, 0.3],     0,     [1.57, -0.82, -0.17, 0]),
+        ("Singularity in between", [0.01, -0.455, 0.5], 0,     [np.pi/2, 0, -0.0254, 0]),
+    ]
 
-    solution = numeric_inv_kin(p, wrist, phi_prev)
-    print(solution)
+    # Printing shows 2 decimal places; the function itself never rounds.
+    np.set_printoptions(precision=2, suppress=True)
+
+    for description, p, wrist, phi_prev in test_cases:
+        print(f"--- {description}: p = {p}, wrist = {wrist}, phi_prev = {np.array(phi_prev, dtype=float)}")
+        phi_new = numeric_inv_kin(np.array(p), wrist, np.array(phi_prev))
+        print("phi_new:", phi_new)
+        print()

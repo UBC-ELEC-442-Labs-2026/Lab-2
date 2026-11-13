@@ -161,7 +161,20 @@ class RRT_Helpers:
         # Return the Euclidean distance between the closest points
         return np.linalg.norm(P_closest - Q_closest)
         
-    def is_configuration_colliding(self, phi):
+    def is_configuration_colliding(self, phi: np.ndarray) -> bool:
+        """
+        Check a joint configuration against the joint limits and every obstacle.
+
+        Parameters
+        ----------
+        phi : np.ndarray, shape (4,)
+            Joint angles [base, shoulder, elbow, wrist], in radians.
+
+        Returns
+        -------
+        bool
+            True if the arm breaks a joint limit or touches an obstacle, False if it's safe.
+        """
 
         # check joint limits
         if self.check_self_collision(phi):
@@ -206,26 +219,39 @@ class RRT_Helpers:
     
 
 class RRT_Tree_Manager:
-    '''
-    Abstracted spatial tree manager for student labs.
-    Handles node storage and rapid nearest-neighbor lookup via SciPy.
-    '''
-    def __init__(self, start_phi):
-        # A flat list to store node joint matrices: shape (N, 4)
-        self.nodes = [np.array(start_phi)]
-        # Parallel list to map the parent index for path tracing back to root - ie. node i's parent is self.parents[i]
-        self.parents = [None]
+    """
+    Stores the RRT tree and finds nearest nodes.
 
-    def add_node(self, q_new, parent_index):
-        """Adds a verified configuration and links its parent index."""
+    The tree is two lists of the same length: nodes[i] is node i's joint configuration,
+    and parents[i] is the index of node i's parent. The root (the start) is node 0, and
+    its parent is None.
+    """
+    def __init__(self, start_phi):
+        # nodes[i] is node i's joint configuration
+        self.nodes: list[np.ndarray] = [np.array(start_phi)]
+        # parents[i] is the index of node i's parent (None for the root)
+        self.parents: list[int | None] = [None]
+
+    def add_node(self, q_new: np.ndarray, parent_index: int) -> None:
+        """Add q_new to the tree as a child of node parent_index."""
         self.nodes.append(np.array(q_new))
         self.parents.append(parent_index)
 
-    def get_nearest_neighbor(self, q_rand):
-        """Returns (nearest_configuration, nearest_index) quickly via KD-Tree."""
+    def get_nearest_neighbor(self, q_rand: np.ndarray) -> tuple[np.ndarray, int]:
+        """
+        The node closest to q_rand in joint space.
+
+        Returns
+        -------
+        node : np.ndarray, shape (4,)
+            The closest node's joint configuration.
+        node_idx : int
+            Its index in the tree.
+        """
         spatial_tree = KDTree(np.array(self.nodes))
         _, nearest_idx = spatial_tree.query(q_rand)
         return self.nodes[nearest_idx], nearest_idx
         
-    def get_size(self):
+    def get_size(self) -> int:
+        """Number of nodes in the tree."""
         return len(self.nodes)
