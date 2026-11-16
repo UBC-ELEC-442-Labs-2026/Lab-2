@@ -143,16 +143,25 @@ class RRT_Helpers:
         (0 if they overlap). Checks points every `spacing` metres along the segment, so it can
         read up to spacing/2 too far.
         """
+        # Points along the segment, one row per point
         n = int(np.ceil(np.linalg.norm(P2 - P1) / spacing)) + 1
         points = P1 + np.linspace(0, 1, n)[:, None] * (P2 - P1)
+
+        # The cylinder's axis: unit direction k and length
         axis = np.asarray(obst.Q2, dtype=float) - np.asarray(obst.Q1, dtype=float)
         length = np.linalg.norm(axis)
         k = axis / length
+
+        # Each point's height along the axis, and its distance from the axis
         rel = points - obst.Q1
-        h = rel @ k                                               # height along the cylinder's axis
-        rho = np.linalg.norm(rel - h[:, None] * k, axis=1)        # distance from the axis
-        outside_ends = np.maximum(np.maximum(-h, h - length), 0)  # below the bottom or above the top
-        outside_wall = np.maximum(rho - obst.R, 0)                # outside the side wall
+        h = rel @ k                                          # @ is the dot product
+        rho = np.linalg.norm(rel - h[:, None] * k, axis=1)
+
+        # How far each point is outside the cylinder (0 if inside that direction)
+        outside_ends = np.maximum(np.maximum(-h, h - length), 0)   # below the bottom or above the top
+        outside_wall = np.maximum(rho - obst.R, 0)                 # outside the side wall
+
+        # Closest point wins
         return float(np.min(np.hypot(outside_ends, outside_wall)))
 
     def get_links(self, phi):
@@ -166,15 +175,22 @@ class RRT_Helpers:
         p = self.get_joint_positions(np.asarray(phi, dtype=float))
         tip = p[4]                                # frame {4}, taken as the fingertip
         u = (p[4] - p[2]) / self.LAMBDA_3         # unit vector along the forearm and gripper
-        back = lambda d: tip - d * u              # the point d metres back from the tip
+
+        def back(d):
+            """The point d metres back from the tip, along the gripper."""
+            return tip - d * u
+
+        body_start = back(self.GRIPPER_BODY_END)
+        fingers_start = back(self.FINGERS_END)
         r_fingers = self.LINK_RADII["fingers"]
+        fingers_end = back(r_fingers)   # pulled back by its radius so the rounded end stops at the tip
+
         return [
-            ("base",         p[0],                         p[1],                         self.LINK_RADII["base"]),
-            ("upper_arm",    p[1],                         p[2],                         self.LINK_RADII["upper_arm"]),
-            ("forearm",      p[2],                         back(self.GRIPPER_BODY_END),  self.LINK_RADII["forearm"]),
-            ("gripper_body", back(self.GRIPPER_BODY_END),  back(self.FINGERS_END),       self.LINK_RADII["gripper_body"]),
-            # pulled back by its radius so the rounded end stops at the fingertip
-            ("fingers",      back(self.FINGERS_END),       back(r_fingers),              r_fingers),
+            ("base",         p[0],          p[1],          self.LINK_RADII["base"]),
+            ("upper_arm",    p[1],          p[2],          self.LINK_RADII["upper_arm"]),
+            ("forearm",      p[2],          body_start,    self.LINK_RADII["forearm"]),
+            ("gripper_body", body_start,    fingers_start, self.LINK_RADII["gripper_body"]),
+            ("fingers",      fingers_start, fingers_end,   r_fingers),
         ]
 
     def is_configuration_colliding(self, phi: np.ndarray) -> bool:
@@ -196,12 +212,15 @@ class RRT_Helpers:
             return True  # joint angles are out of bounds
 
         links = self.get_links(phi)
+
+        # The fingertip: the end of the fingers segment, plus the radius it was pulled back by
         _, fingers_start, fingers_end, r_fingers = links[-1]
         u = (fingers_end - fingers_start) / np.linalg.norm(fingers_end - fingers_start)
         tip = fingers_end + r_fingers * u
-        if tip[2] < self.MIN_TIP_Z0:   # the fingertip, against the lab interface's floor
+        if tip[2] < self.MIN_TIP_Z0:   # too close to the table
             return True
 
+        # Every link against every obstacle
         for name, P1, P2, r_link in links:
             for obst in self.obstacles:
                 if self._segment_to_cylinder(P1, P2, obst) < r_link + self.SAFETY_MARGIN:
@@ -216,11 +235,18 @@ class RRT_Helpers:
         into steps of at most step_size radians, so the arm never takes a big jump.
         """
         def segment_is_free(qa, qb):
+            """True if the straight joint-space move qa -> qb is collision-free (checked every 0.02 rad)."""
             n = max(1, int(np.ceil(np.linalg.norm(qb - qa) / 0.02)))
-            return all(not self.is_configuration_colliding(qa + (qb - qa) * k / n) for k in range(1, n + 1))
+            for k in range(1, n + 1):
+                if self.is_configuration_colliding(qa + (qb - qa) * k / n):
+                    return False
+            return True
 
         path = [np.asarray(q, dtype=float) for q in path]
-        short, i = [path[0]], 0
+
+        # Shortcut: from point i, find the furthest point j we can go to directly
+        short = [path[0]]
+        i = 0
         while i < len(path) - 1:
             j = len(path) - 1
             while j > i + 1 and not segment_is_free(path[i], path[j]):
@@ -228,10 +254,12 @@ class RRT_Helpers:
             short.append(path[j])
             i = j
 
+        # Split the long straight moves back into small steps
         steps = [short[0]]
-        for qa, qb in zip(short[:-1], short[1:]):
+        for qa, qb in zip(short[:-1], short[1:]):   # each pair of neighbouring points
             n = max(1, int(np.ceil(np.linalg.norm(qb - qa) / step_size)))
-            steps += [qa + (qb - qa) * k / n for k in range(1, n + 1)]
+            for k in range(1, n + 1):
+                steps.append(qa + (qb - qa) * k / n)
         return steps
 
     def plot_path(self, path: list[np.ndarray], title: str = "") -> None:
@@ -244,33 +272,52 @@ class RRT_Helpers:
         fig = plt.figure(figsize=(8, 7))
         ax = fig.add_subplot(projection="3d")
 
+        # Obstacles
         theta = np.linspace(0, 2 * np.pi, 40)
         for obst in self.obstacles:
-            Q1, Q2 = np.asarray(obst.Q1, dtype=float), np.asarray(obst.Q2, dtype=float)
+            Q1 = np.asarray(obst.Q1, dtype=float)
+            Q2 = np.asarray(obst.Q2, dtype=float)
+
+            # Two unit vectors a, b perpendicular to the cylinder's axis k
             k = (Q2 - Q1) / np.linalg.norm(Q2 - Q1)
-            a = np.cross(k, [1, 0, 0] if abs(k[0]) < 0.9 else [0, 1, 0])
+            if abs(k[0]) < 0.9:
+                a = np.cross(k, [1, 0, 0])
+            else:
+                a = np.cross(k, [0, 1, 0])
             a /= np.linalg.norm(a)
             b = np.cross(k, a)
-            ring = lambda c, r: c + r * (np.outer(np.cos(theta), a) + np.outer(np.sin(theta), b))
-            for c in (Q1, Q2):                       # bottom and top
-                ax.plot(*ring(c, obst.R).T, color="gray", lw=1)
+
+            def ring(c, r):
+                """Points on a circle of radius r around centre c, perpendicular to the axis."""
+                return c + r * (np.outer(np.cos(theta), a) + np.outer(np.sin(theta), b))
+
+            # Outline of the bottom and top
+            for c in (Q1, Q2):
+                circle = ring(c, obst.R)
+                ax.plot(circle[:, 0], circle[:, 1], circle[:, 2], color="gray", lw=1)
+
+            # Side wall and top as see-through surfaces
             side = np.stack([ring(Q1, obst.R), ring(Q2, obst.R)])
             ax.plot_surface(side[..., 0], side[..., 1], side[..., 2], color="gray", alpha=0.3, linewidth=0)
             top = np.stack([ring(Q2, 0), ring(Q2, obst.R)])
             ax.plot_surface(top[..., 0], top[..., 1], top[..., 2], color="gray", alpha=0.3, linewidth=0)
 
-        def draw_arm(phi, color, label):
+        def draw_arm(phi, color, alpha=1.0, lw=4, label=None):
             for i, (name, P1, P2, r) in enumerate(self.get_links(phi)):
-                ax.plot(*np.stack([P1, P2]).T, color=color, lw=4, solid_capstyle="round",
-                        label=label if i == 0 else None)
+                ax.plot([P1[0], P2[0]], [P1[1], P2[1]], [P1[2], P2[2]],
+                        color=color, alpha=alpha, lw=lw, solid_capstyle="round",
+                        label=label if i == 0 else None)   # label only once per arm
 
-        for q in path[1:-1:max(1, len(path) // 8)]:
-            for name, P1, P2, r in self.get_links(q):
-                ax.plot(*np.stack([P1, P2]).T, color="tab:blue", alpha=0.15, lw=2)
-        draw_arm(path[0], "tab:green", "arm at the start")
-        draw_arm(path[-1], "tab:red", "arm at the end")
+        # About 8 faint arms along the way, then the start and the end
+        every = max(1, len(path) // 8)
+        for q in path[1:-1:every]:   # every `every`-th point, skipping the first and last
+            draw_arm(q, "tab:blue", alpha=0.15, lw=2)
+        draw_arm(path[0], "tab:green", label="arm at the start")
+        draw_arm(path[-1], "tab:red", label="arm at the end")
+
+        # The line the fingertip follows
         tips = np.array([self.get_joint_positions(np.asarray(q, dtype=float))[4] for q in path])
-        ax.plot(*tips.T, color="tab:orange", lw=2, label="fingertip path")
+        ax.plot(tips[:, 0], tips[:, 1], tips[:, 2], color="tab:orange", lw=2, label="fingertip path")
 
         ax.set_xlabel("x (m)")
         ax.set_ylabel("y (m)")
@@ -278,7 +325,7 @@ class RRT_Helpers:
         ax.set_xlim(-0.1, 0.9)
         ax.set_ylim(-0.5, 0.5)
         ax.set_zlim(-0.011, 0.8)
-        ax.set_box_aspect((1.0, 1.0, 0.811))
+        ax.set_box_aspect((1.0, 1.0, 0.811))   # same scale on all three axes
         ax.set_title(title or "Planned path (close this window to run it)", fontsize=10)
         ax.legend(loc="upper left", fontsize=8)
         plt.show()

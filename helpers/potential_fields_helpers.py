@@ -49,21 +49,34 @@ class Potential_Fields_helper:
         - direction_vector: np.array([x, y, z]), unit vector from the closest point on the
                             surface toward p4, in {0} coordinates
         """
+        p4 = np.asarray(p4, dtype=float)
         Q1 = np.asarray(obst.Q1, dtype=float)
+
+        # The cylinder's axis: unit direction k and length
         axis = np.asarray(obst.Q2, dtype=float) - Q1
         length = np.linalg.norm(axis)
         k = axis / length
 
-        rel = np.asarray(p4, dtype=float) - Q1
-        h = np.dot(rel, k)                       # height along the cylinder's axis
-        radial = rel - h * k                     # sideways offset from the axis
+        # Split p4 into a height along the axis and a sideways offset from it
+        rel = p4 - Q1
+        h = np.dot(rel, k)
+        radial = rel - h * k
         rho = np.linalg.norm(radial)
-        radial_dir = radial / rho if rho > 1e-9 else np.cross(k, [0.0, 0.0, 1.0] if abs(k[2]) < 0.9 else [1.0, 0.0, 0.0])
-        radial_dir = radial_dir / np.linalg.norm(radial_dir)
+
+        # Unit vector pointing sideways from the axis toward p4
+        if rho > 1e-9:
+            radial_dir = radial / rho
+        else:
+            # p4 is exactly on the axis: any sideways direction will do
+            if abs(k[2]) < 0.9:
+                radial_dir = np.cross(k, [0.0, 0.0, 1.0])
+            else:
+                radial_dir = np.cross(k, [1.0, 0.0, 0.0])
+            radial_dir = radial_dir / np.linalg.norm(radial_dir)
 
         # Closest point on the solid cylinder: clamp the height to [0, length] and the radius to R
         closest = Q1 + np.clip(h, 0.0, length) * k + min(rho, obst.R) * radial_dir
-        vector_to_ee = np.asarray(p4, dtype=float) - closest
+        vector_to_ee = p4 - closest
         distance_to_skin = np.linalg.norm(vector_to_ee)
 
         if distance_to_skin < 1e-9:
