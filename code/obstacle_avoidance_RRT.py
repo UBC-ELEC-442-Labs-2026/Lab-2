@@ -32,19 +32,19 @@ from QArm_functions import QArm_Lab_interface #type: ignore
 # Choose the obstacle setup: 1 or 2 (see the Obstacle Setup figures in the Lab 2 PDF)
 SETUP = 1
 
-# Heights are measured from the bottom of the arm's base, which sits on an 11 mm plate,
-# so the table is at z = TABLE_Z0.
+# Heights are measured with respect to the bottom of the arm's base, which sits on a plate 11mm
+# above the cardboard, thus the table is at z = TABLE_Z0.
 TABLE_Z0 = -0.011
 
 if SETUP == 1:
-    # One large pillar (measured 304 mm tall, modelled as 310 in case the pieces differ) between the start and the end
+    # One large pillar (310 mm tall) between the start and the end
     obstacles = np.array([
         Cylinder_Obstacle(np.array([0.65, 0.0, TABLE_Z0]), np.array([0.65, 0.0, TABLE_Z0 + 0.310]), 0.25),
     ])
     start_pos = np.array([0.5, -0.375, 0.15])
     end_pos = np.array([0.5, 0.375, 0.15])
 else:
-    # Two short pillars (75 mm tall, 104 mm wide octagons) side by side, forming a low wall
+    # Two short pillars (75 mm tall, 104 mm wide octagons) overlapping, forming a barrier
     # between the start and the end
     obstacles = np.array([
         Cylinder_Obstacle(np.array([0.45, -0.05, TABLE_Z0]), np.array([0.45, -0.05, TABLE_Z0 + 0.075]), 0.056),
@@ -53,9 +53,9 @@ else:
     start_pos = np.array([0.275, 0, 0.03])
     end_pos = np.array([0.7, 0, 0.03])
 
-# Wrist angle for the whole exercise. The wrist only rolls the gripper; this angle puts the gripper's
-# motor and cable on top, away from the obstacles. (If they end up underneath, use -158 instead.)
-WRIST_ANGLE = np.radians(158)
+# Wrist angle for the exercise. Puts the gripper's motor and cable on top,
+# to keep clear of obstacles. 
+WRIST_ANGLE = np.radians(160)
 
 # == end obstacle setup ==
 
@@ -79,8 +79,8 @@ while(int(mode) != 0 and int(mode) != 1):
 
 with QArm(hardware=int(mode), readMode=0) as myArm:
 
-    # calibration: corrects the commands on the real arm so the gripper tip goes where the joint
-    # angles say. hold_on_attach: the arm stays where it is until travel_to() moves it.
+    # calibration: corrects the commands before sending to hardware
+    # hold_on_attach: the arm stays where it is until travel_to() moves it.
     QArm_interface = QArm_Lab_interface(calibration=True, hold_on_attach=True)
     QArm_interface.attach_QArm(myArm)
 
@@ -115,6 +115,8 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
         # With probability bias, return goal_phi. Otherwise, pick a random angle for each joint
         # between its limits (joint_limits[0] has the minimums, joint_limits[1] the maximums).
         # np.random.random() and np.random.uniform(low, high) will help here.
+        probability = np.random.random()
+        die_outcome = round(np.random.uniform(0.5, 6.5))
         pass
         # == end student section ==
 
@@ -190,15 +192,18 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
         sys.exit()
 
     path = backtrack(tree.get_size() - 1)   # from the last node added (near the goal) back to the start
-    path.reverse()                          # now from the start to the goal
+    path.reverse()                          # flip the nodes to go from the start to the goal
 
-    # Finish exactly on the goal, unless the goal pose itself counts as a collision
+    # Set the final pose to be the goal, unless the goal pose itself counts as a collision
     if not helpers.is_configuration_colliding(destination_phi):
         path.append(destination_phi)
 
     print(f"Path found! {len(path)} tree nodes")
-    path = helpers.shortcut_path(path)    # straighten the path; comment this line out to run the raw RRT path
-    helpers.plot_path(path)               # 3D plot of the plan; close the window to run it on the arm
+
+    # straighten the path. Uncomment to remove the wiggle
+    # path = helpers.shortcut_path(path)
+    # 3D plot of the plan. Close the window to run it on the arm
+    helpers.plot_path(path)
 
     for node in path:
         QArm_interface.write_to_arm(node)
