@@ -37,49 +37,42 @@ class Potential_Fields_helper:
 
     def get_ee_to_obstacle_vector(self, p4, obst):
         """
-        Calculates the minimum distance and direction vector from the End-Effector (p4)
-        to a cylindrical obstacle.
-        
+        Distance and direction from the end effector (p4) to a solid, flat-topped cylinder.
+
         Parameters:
         - p4: np.array([x, y, z]) of the end-effector
         - obst: Cylinder_Obstacle object containing Q1, Q2, and R
-        
+
         Returns:
-        - distance_to_skin: Float, shortest distance from EE to the cylinder surface
-        - direction_vector: np.array([x, y, z]), normalized vector pointing from the 
-                            obstacle surface directly toward p4 in {0} coordinates
+        - distance_to_skin: Float, shortest distance from the EE to the cylinder's surface
+                            (side wall, top or bottom); 0 if the EE is inside it
+        - direction_vector: np.array([x, y, z]), unit vector from the closest point on the
+                            surface toward p4, in {0} coordinates
         """
-        # Vector along the cylinder's centerline
-        v = obst.Q2 - obst.Q1
-        # Vector from cylinder start to the End-Effector
-        w = p4 - obst.Q1
-        
-        # Project w onto v to find the closest point on the infinite line
-        projection = np.dot(w, v) / np.dot(v, v)
-        
-        # Clamp the projection to the finite segment bounds [0, 1] 
-        # This correctly handles the flat caps/ends of the cylinder
-        t = np.clip(projection, 0.0, 1.0)
-        
-        # Closest point on the cylinder's centerline axis
-        Q_closest = obst.Q1 + t * v
-        
-        # Vector from the centerline to the End-Effector
-        vector_to_ee = p4 - Q_closest
-        distance_to_center = np.linalg.norm(vector_to_ee)
-        
-        # Handle the edge case where the EE is exactly on the centerline axis
-        if distance_to_center < 1e-6:
-            # Provide a default fallback direction to prevent division by zero
-            return 0.0, np.array([1.0, 0.0, 0.0])
-            
-        # Subtract the cylinder's radius to get the distance to the outer skin
-        distance_to_skin = distance_to_center - obst.R
-        
-        # Normalized direction vector pointing away from the obstacle toward the EE
-        direction_vector = vector_to_ee / distance_to_center
-        
-        return distance_to_skin, direction_vector
+        Q1 = np.asarray(obst.Q1, dtype=float)
+        axis = np.asarray(obst.Q2, dtype=float) - Q1
+        length = np.linalg.norm(axis)
+        k = axis / length
+
+        rel = np.asarray(p4, dtype=float) - Q1
+        h = np.dot(rel, k)                       # height along the cylinder's axis
+        radial = rel - h * k                     # sideways offset from the axis
+        rho = np.linalg.norm(radial)
+        radial_dir = radial / rho if rho > 1e-9 else np.cross(k, [0.0, 0.0, 1.0] if abs(k[2]) < 0.9 else [1.0, 0.0, 0.0])
+        radial_dir = radial_dir / np.linalg.norm(radial_dir)
+
+        # Closest point on the solid cylinder: clamp the height to [0, length] and the radius to R
+        closest = Q1 + np.clip(h, 0.0, length) * k + min(rho, obst.R) * radial_dir
+        vector_to_ee = np.asarray(p4, dtype=float) - closest
+        distance_to_skin = np.linalg.norm(vector_to_ee)
+
+        if distance_to_skin < 1e-9:
+            # Inside the cylinder: push out through the nearest face (the side wall or the top)
+            if (obst.R - rho) < (length - h):
+                return 0.0, radial_dir
+            return 0.0, k
+
+        return distance_to_skin, vector_to_ee / distance_to_skin
     
 
     

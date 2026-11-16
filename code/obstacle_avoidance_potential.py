@@ -32,21 +32,30 @@ from QArm_functions import QArm_Lab_interface #type: ignore
 # Choose the obstacle setup: 1 or 2 (see the Obstacle Setup figures in the Lab 2 PDF)
 SETUP = 1
 
+# Heights are measured from the bottom of the arm's base, which sits on an 11 mm plate,
+# so the table is at z = TABLE_Z0.
+TABLE_Z0 = -0.011
+
 if SETUP == 1:
-    # One large pillar between the start and the end
+    # One large pillar (measured 304 mm tall, modelled as 310 in case the pieces differ) between the start and the end
     obstacles = np.array([
-        Cylinder_Obstacle(np.array([0.65, 0.0, 0.0]), np.array([0.65, 0.0, 1.0]), 0.25),
+        Cylinder_Obstacle(np.array([0.65, 0.0, TABLE_Z0]), np.array([0.65, 0.0, TABLE_Z0 + 0.310]), 0.25),
     ])
-    start_pos = np.array([0.5, -0.375, 0.3])
-    end_pos = np.array([0.5, 0.375, 0.3])
+    start_pos = np.array([0.5, -0.375, 0.15])
+    end_pos = np.array([0.5, 0.375, 0.15])
 else:
-    # Two short pillars side by side, forming a low wall between the start and the end
+    # Two short pillars (75 mm tall, 104 mm wide octagons) side by side, forming a low wall
+    # between the start and the end
     obstacles = np.array([
-        Cylinder_Obstacle(np.array([0.45, -0.05, 0.0]), np.array([0.45, -0.05, 0.12]), 0.075),
-        Cylinder_Obstacle(np.array([0.45, 0.05, 0.0]), np.array([0.45, 0.05, 0.12]), 0.075),
+        Cylinder_Obstacle(np.array([0.45, -0.05, TABLE_Z0]), np.array([0.45, -0.05, TABLE_Z0 + 0.075]), 0.056),
+        Cylinder_Obstacle(np.array([0.45, 0.05, TABLE_Z0]), np.array([0.45, 0.05, TABLE_Z0 + 0.075]), 0.056),
     ])
-    start_pos = np.array([0.275, 0, 0.1])
-    end_pos = np.array([0.7, 0, 0.1])
+    start_pos = np.array([0.275, 0, 0.03])
+    end_pos = np.array([0.7, 0, 0.03])
+
+# Wrist angle for the whole exercise. The wrist only rolls the gripper; this angle puts the gripper's
+# motor and cable on top, away from the obstacles. (If they end up underneath, use -158 instead.)
+WRIST_ANGLE = np.radians(158)
 
 # == end obstacle setup ==
 
@@ -66,13 +75,16 @@ while(int(mode) != 0 and int(mode) != 1):
 
 with QArm(hardware=int(mode), readMode=0) as myArm:
 
-    QArm_Interface = QArm_Lab_interface()
+    # calibration: corrects the commands on the real arm so the gripper tip goes where the joint
+    # angles say. hold_on_attach: the arm stays where it is until travel_to() moves it.
+    QArm_Interface = QArm_Lab_interface(calibration=True, hold_on_attach=True)
     QArm_Interface.attach_QArm(myArm)
 
-    _, start_phi = QArm_Interface.inverse_kinematics(start_pos, 0, np.array([0, 0, 0, 0]))
+    _, start_phi = QArm_Interface.inverse_kinematics(start_pos, WRIST_ANGLE, np.array([0, 0, 0, 0]))
 
-    QArm_Interface.write_to_arm(start_phi)
-    time.sleep(4)
+    QArm_Interface.close_gripper()
+    QArm_Interface.travel_to(start_phi)   # up, over and down onto the start, clear of the obstacles
+    time.sleep(1)
 
     # Variable setup : it should work with this set, though you may want to tune it yourself
     zeta = 1

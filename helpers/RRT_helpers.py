@@ -41,6 +41,19 @@ class RRT_Helpers:
     LAMBDA_2 = np.sqrt(L_2**2 + L_3**2)
     LAMBDA_3 = L_4 + L_5
 
+    # Collision model (measured on the lab arms, Nov 2026). Radii in metres.
+    LINK_RADII = {
+        "base": 0.07,          # base column, table to shoulder
+        "upper_arm": 0.04,     # shoulder to elbow
+        "forearm": 0.03,       # elbow to the back of the gripper
+        "gripper_body": 0.05,  # the gripper motor housing
+        "fingers": 0.012,      # the closed fingers
+    }
+    GRIPPER_BODY_END = 0.148   # m back from the fingertip where the gripper body starts
+    FINGERS_END = 0.086        # m back from the fingertip where the fingers start
+    SAFETY_MARGIN = 0.01       # extra gap every part of the arm keeps from the obstacles (m)
+    MIN_TIP_Z0 = 0.015         # lowest fingertip height (m, frame {0}); same as QArm_calibration.MIN_TIP_Z0
+
     def __init__(self, obstacles):
         self.myArmUtilities = QArmUtilities()
         self.joint_limits = np.radians(np.array([
@@ -124,46 +137,49 @@ class RRT_Helpers:
 
         return joint_positions
     
-    def min_segment_distance(self, P1, P2, Q1, Q2):
+    def _segment_to_cylinder(self, P1, P2, obst, spacing=0.005):
         """
-        Computes the minimum distance between two 3D line segments:
-        Segment 1: from P1 to P2
-        Segment 2: from Q1 to Q2
+        Distance from the line segment P1-P2 to the surface of a solid, flat-topped cylinder
+        (0 if they overlap). Checks points every `spacing` metres along the segment, so it can
+        read up to spacing/2 too far.
         """
-        u = P2 - P1
-        v = Q2 - Q1
-        w0 = P1 - Q1
+        n = int(np.ceil(np.linalg.norm(P2 - P1) / spacing)) + 1
+        points = P1 + np.linspace(0, 1, n)[:, None] * (P2 - P1)
+        axis = np.asarray(obst.Q2, dtype=float) - np.asarray(obst.Q1, dtype=float)
+        length = np.linalg.norm(axis)
+        k = axis / length
+        rel = points - obst.Q1
+        h = rel @ k                                               # height along the cylinder's axis
+        rho = np.linalg.norm(rel - h[:, None] * k, axis=1)        # distance from the axis
+        outside_ends = np.maximum(np.maximum(-h, h - length), 0)  # below the bottom or above the top
+        outside_wall = np.maximum(rho - obst.R, 0)                # outside the side wall
+        return float(np.min(np.hypot(outside_ends, outside_wall)))
 
-        a = np.dot(u, u)
-        b = np.dot(u, v)
-        c = np.dot(v, v)
-        d = np.dot(u, w0)
-        e = np.dot(v, w0)
+    def get_links(self, phi):
+        """
+        The arm as line segments, each with the radius of the tube around it.
 
-        denominator = a * c - b * b
+        Returns
+        -------
+        list of (name, start point, end point, radius)
+        """
+        p = self.get_joint_positions(np.asarray(phi, dtype=float))
+        tip = p[4]                                # frame {4}, taken as the fingertip
+        u = (p[4] - p[2]) / self.LAMBDA_3         # unit vector along the forearm and gripper
+        back = lambda d: tip - d * u              # the point d metres back from the tip
+        r_fingers = self.LINK_RADII["fingers"]
+        return [
+            ("base",         p[0],                         p[1],                         self.LINK_RADII["base"]),
+            ("upper_arm",    p[1],                         p[2],                         self.LINK_RADII["upper_arm"]),
+            ("forearm",      p[2],                         back(self.GRIPPER_BODY_END),  self.LINK_RADII["forearm"]),
+            ("gripper_body", back(self.GRIPPER_BODY_END),  back(self.FINGERS_END),       self.LINK_RADII["gripper_body"]),
+            # pulled back by its radius so the rounded end stops at the fingertip
+            ("fingers",      back(self.FINGERS_END),       back(r_fingers),              r_fingers),
+        ]
 
-        # If lines are parallel, handle division by zero
-        if denominator < 1e-6:
-            s_raw = 0.0
-            t_raw = e / c if c != 0 else 0.0
-        else:
-            s_raw = (b * e - c * d) / denominator
-            t_raw = (a * e - b * d) / denominator
-
-        # Clamp parameters to the finite segment bounds [0, 1]
-        s = np.clip(s_raw, 0.0, 1.0)
-        t = np.clip(t_raw, 0.0, 1.0)
-
-        # Recompute closest points given clamped parameters
-        P_closest = P1 + s * u
-        Q_closest = Q1 + t * v
-
-        # Return the Euclidean distance between the closest points
-        return np.linalg.norm(P_closest - Q_closest)
-        
     def is_configuration_colliding(self, phi: np.ndarray) -> bool:
         """
-        Check a joint configuration against the joint limits and every obstacle.
+        Check a joint configuration against the joint limits, the floor and every obstacle.
 
         Parameters
         ----------
@@ -173,43 +189,105 @@ class RRT_Helpers:
         Returns
         -------
         bool
-            True if the arm breaks a joint limit or touches an obstacle, False if it's safe.
+            True if the arm breaks a joint limit, goes below the floor or comes within
+            SAFETY_MARGIN of an obstacle, False if it's safe.
         """
+        if self.is_outside_joint_limits(phi):
+            return True  # joint angles are out of bounds
 
-        # check joint limits
-        if self.check_self_collision(phi):
-            return True # joint angles are out of bounds
-        
-        # Compute DH Forward Kinematics to get all joint 3D positions
-        p = self.get_joint_positions(phi) 
-        link_radii = [0.07, 0.07, 0.07]
-        links = [
-            [p[0], p[1]], # base to shoulder
-            [p[1], p[2]], # shoulder to elbow
-            [p[2], p[4]] # elbow to EE
-        ]
-        num_links = len(links)
-        
-        # Check every link against every obstacle
-        for i in range(num_links):
-            P1 = links[i][0]     # Start of link i
-            P2 = links[i][1]   # End of link i
-            r_link = link_radii[i]
-            
-            # --- Robot vs Environment ---
+        links = self.get_links(phi)
+        _, fingers_start, fingers_end, r_fingers = links[-1]
+        u = (fingers_end - fingers_start) / np.linalg.norm(fingers_end - fingers_start)
+        tip = fingers_end + r_fingers * u
+        if tip[2] < self.MIN_TIP_Z0:   # the fingertip, against the lab interface's floor
+            return True
+
+        for name, P1, P2, r_link in links:
             for obst in self.obstacles:
-                # obst contains (Q1, Q2, r_obst)
-                d = self.min_segment_distance(P1, P2, obst.Q1, obst.Q2)
-                if d < (r_link + obst.R):
-                    return True # Instant fail, collision detected!
-                    
-        return False # Safe configuration!
+                if self._segment_to_cylinder(P1, P2, obst) < r_link + self.SAFETY_MARGIN:
+                    return True  # collision detected
 
-    def check_self_collision(self, phi):
+        return False  # safe configuration
+
+    def shortcut_path(self, path: list[np.ndarray], step_size: float = 0.1) -> list[np.ndarray]:
+        """
+        Remove the random detours from an RRT path: from each point, jump straight to the
+        furthest later point that can be reached without a collision. The result is split back
+        into steps of at most step_size radians, so the arm never takes a big jump.
+        """
+        def segment_is_free(qa, qb):
+            n = max(1, int(np.ceil(np.linalg.norm(qb - qa) / 0.02)))
+            return all(not self.is_configuration_colliding(qa + (qb - qa) * k / n) for k in range(1, n + 1))
+
+        path = [np.asarray(q, dtype=float) for q in path]
+        short, i = [path[0]], 0
+        while i < len(path) - 1:
+            j = len(path) - 1
+            while j > i + 1 and not segment_is_free(path[i], path[j]):
+                j -= 1
+            short.append(path[j])
+            i = j
+
+        steps = [short[0]]
+        for qa, qb in zip(short[:-1], short[1:]):
+            n = max(1, int(np.ceil(np.linalg.norm(qb - qa) / step_size)))
+            steps += [qa + (qb - qa) * k / n for k in range(1, n + 1)]
+        return steps
+
+    def plot_path(self, path: list[np.ndarray], title: str = "") -> None:
+        """
+        3D plot of the obstacles, the arm at the start (green) and the end (red) of the path,
+        and the line the fingertip follows (orange). Close the window to carry on.
+        """
+        import matplotlib.pyplot as plt
+
+        fig = plt.figure(figsize=(8, 7))
+        ax = fig.add_subplot(projection="3d")
+
+        theta = np.linspace(0, 2 * np.pi, 40)
+        for obst in self.obstacles:
+            Q1, Q2 = np.asarray(obst.Q1, dtype=float), np.asarray(obst.Q2, dtype=float)
+            k = (Q2 - Q1) / np.linalg.norm(Q2 - Q1)
+            a = np.cross(k, [1, 0, 0] if abs(k[0]) < 0.9 else [0, 1, 0])
+            a /= np.linalg.norm(a)
+            b = np.cross(k, a)
+            ring = lambda c, r: c + r * (np.outer(np.cos(theta), a) + np.outer(np.sin(theta), b))
+            for c in (Q1, Q2):                       # bottom and top
+                ax.plot(*ring(c, obst.R).T, color="gray", lw=1)
+            side = np.stack([ring(Q1, obst.R), ring(Q2, obst.R)])
+            ax.plot_surface(side[..., 0], side[..., 1], side[..., 2], color="gray", alpha=0.3, linewidth=0)
+            top = np.stack([ring(Q2, 0), ring(Q2, obst.R)])
+            ax.plot_surface(top[..., 0], top[..., 1], top[..., 2], color="gray", alpha=0.3, linewidth=0)
+
+        def draw_arm(phi, color, label):
+            for i, (name, P1, P2, r) in enumerate(self.get_links(phi)):
+                ax.plot(*np.stack([P1, P2]).T, color=color, lw=4, solid_capstyle="round",
+                        label=label if i == 0 else None)
+
+        for q in path[1:-1:max(1, len(path) // 8)]:
+            for name, P1, P2, r in self.get_links(q):
+                ax.plot(*np.stack([P1, P2]).T, color="tab:blue", alpha=0.15, lw=2)
+        draw_arm(path[0], "tab:green", "arm at the start")
+        draw_arm(path[-1], "tab:red", "arm at the end")
+        tips = np.array([self.get_joint_positions(np.asarray(q, dtype=float))[4] for q in path])
+        ax.plot(*tips.T, color="tab:orange", lw=2, label="fingertip path")
+
+        ax.set_xlabel("x (m)")
+        ax.set_ylabel("y (m)")
+        ax.set_zlabel("z (m)")
+        ax.set_xlim(-0.1, 0.9)
+        ax.set_ylim(-0.5, 0.5)
+        ax.set_zlim(-0.011, 0.8)
+        ax.set_box_aspect((1.0, 1.0, 0.811))
+        ax.set_title(title or "Planned path (close this window to run it)", fontsize=10)
+        ax.legend(loc="upper left", fontsize=8)
+        plt.show()
+
+    def is_outside_joint_limits(self, phi):
         '''
-        Checks if the arm is in a valid position
+        Checks the joint angles against the joint limits
 
-        Returns: True if the arm collides (invalid position), false otherwise
+        Returns: True if any joint is outside its limits, False otherwise
         '''
         for i in range(4):
             if phi[i] < self.joint_limits[0][i] or phi[i] > self.joint_limits[1][i]:
