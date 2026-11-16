@@ -89,6 +89,15 @@ class Potential_Fields_helper:
     
 
     
+    def plot_path(self, path: list[np.ndarray]) -> None:
+        """
+        3D plot of the obstacles, the arm at the start (green) and the end (red) of the path,
+        and the line the fingertip followed (orange). Close the window to carry on.
+        """
+        # Same drawing as the RRT exercise
+        from helpers.RRT_helpers import RRT_Helpers
+        RRT_Helpers(self.obstacles).plot_path(path, title="Path taken (close this window to finish)")
+
     def get_all_obstacle_distances(self, p4: np.ndarray) -> list[dict]:
         """
         Distance and direction from the end effector to every obstacle.

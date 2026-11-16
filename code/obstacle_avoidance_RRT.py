@@ -54,8 +54,8 @@ else:
     end_pos = np.array([0.7, 0, 0.03])
 
 # Wrist angle for the exercise. Puts the gripper's motor and cable on top,
-# to keep clear of obstacles. 
-WRIST_ANGLE = np.radians(160)
+# to keep clear of obstacles.
+WRIST_ANGLE = np.radians(159)
 
 # == end obstacle setup ==
 
@@ -91,7 +91,7 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
 
     QArm_interface.close_gripper()
     QArm_interface.travel_to(start_phi)   # up, over and down onto the start, clear of the obstacles
-    time.sleep(1)
+    time.sleep(2)   # let the arm settle at the start
 
     # --------------------------------------------------------------------------
     # TODO 1: Implement Goal-Biased Random Joint Sampling
@@ -202,10 +202,13 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
 
     # straighten the path. Uncomment to remove the wiggle
     # path = helpers.shortcut_path(path)
+    
     # 3D plot of the plan. Close the window to run it on the arm
     helpers.plot_path(path)
 
     for node in path:
         QArm_interface.write_to_arm(node)
         time.sleep(0.2)
+
+    time.sleep(5)   # let the arm settle at the goal
 

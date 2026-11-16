@@ -54,8 +54,8 @@ else:
     end_pos = np.array([0.7, 0, 0.03])
 
 # Wrist angle for the exercise. Puts the gripper's motor and cable on top,
-# to keep clear of obstacles. 
-WRIST_ANGLE = np.radians(160)
+# to keep clear of obstacles.
+WRIST_ANGLE = np.radians(159)
 
 # == end obstacle setup ==
 
@@ -84,7 +84,7 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
 
     QArm_Interface.close_gripper()
     QArm_Interface.travel_to(start_phi)   # up, over and down onto the start, clear of the obstacles
-    time.sleep(1)
+    time.sleep(2)   # let the arm settle at the start
 
     # Variable setup : it should work with this set, though you may want to tune it yourself
     zeta = 1
@@ -200,6 +200,7 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
     # TODO 4: Main loop
     # --------------------------------------------------------------------------
     q = start_phi.copy() # the joint angles sent to the arm
+    path = [q.copy()]    # every q sent to the arm, for the plot at the end
 
     for step in range(max_steps):
         p4, _ = QArm_Interface.forward_kinematics(q)
@@ -219,6 +220,7 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
         # ==  end student section  ==
 
         QArm_Interface.write_to_arm(q)
+        path.append(q.copy())
         time.sleep(1 / approx_update_freq)
 
     if destination_vec["distance"] < success_threshold:
@@ -226,4 +228,7 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
     else:
         print(f"Stopped after {max_steps} steps without reaching the destination")
 
-    time.sleep(4) # Allow arm time to settle at final target position
+    time.sleep(5)   # let the arm settle at the final position
+
+    # 3D plot of the path the arm took. Close the window to finish
+    helpers.plot_path(path)
