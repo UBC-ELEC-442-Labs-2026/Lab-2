@@ -19,14 +19,19 @@ class Cylinder_Obstacle:
         self.R = R
 
     def get_obs(self):
+        """The obstacle as [Q1, Q2, R]."""
         return np.array([self.Q1, self.Q2, self.R])
     
 
 
     
 class Potential_Fields_helper:
+    """
+    Distances and directions from the end effector to the obstacles, for the potential field.
+    """
 
     def __init__(self, obstacles):
+        """obstacles: list of Cylinder_Obstacle."""
         self.myArmUtilities = QArmUtilities()
         self.joint_limits = np.radians(np.array([
             np.array([-170.0, -85.0, -95.0, -160.0]),
@@ -89,6 +94,15 @@ class Potential_Fields_helper:
     
 
     
+    def check_pose(self, phi: np.ndarray, target_pos: np.ndarray, name: str) -> None:
+        """
+        Stop the program with a message if phi doesn't put the tip at target_pos (the inverse
+        kinematics failed), or if the arm would collide there. Use it on the start and the goal.
+        """
+        # Same check as the RRT exercise
+        from helpers.RRT_helpers import RRT_Helpers
+        RRT_Helpers(self.obstacles).check_pose(phi, target_pos, name)
+
     def plot_path(self, path: list[np.ndarray]) -> None:
         """
         3D plot of the obstacles, the arm at the start (green) and the end (red) of the path,

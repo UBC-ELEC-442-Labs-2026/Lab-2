@@ -27,7 +27,7 @@ from QArm_functions import QArm_Lab_interface #type: ignore
 # End of imports
 
 
-# == Obstacle setup ==
+# == Obstacle Setup ==
 
 # Choose the obstacle setup: 1 or 2 (see the Obstacle Setup figures in the Lab 2 PDF)
 SETUP = 1
@@ -41,8 +41,8 @@ if SETUP == 1:
     obstacles = np.array([
         Cylinder_Obstacle(np.array([0.65, 0.0, TABLE_Z0]), np.array([0.65, 0.0, TABLE_Z0 + 0.310]), 0.25),
     ])
-    start_pos = np.array([0.5, -0.375, 0.15])
-    end_pos = np.array([0.5, 0.375, 0.15])
+    start_pos = np.array([0.5, -0.375, 0.05])
+    end_pos = np.array([0.5, 0.375, 0.05])
 else:
     # Two short pillars (75 mm tall, 104 mm wide octagons) overlapping, forming a barrier
     # between the start and the end
@@ -50,14 +50,14 @@ else:
         Cylinder_Obstacle(np.array([0.45, -0.05, TABLE_Z0]), np.array([0.45, -0.05, TABLE_Z0 + 0.075]), 0.056),
         Cylinder_Obstacle(np.array([0.45, 0.05, TABLE_Z0]), np.array([0.45, 0.05, TABLE_Z0 + 0.075]), 0.056),
     ])
-    start_pos = np.array([0.275, 0, 0.03])
-    end_pos = np.array([0.7, 0, 0.03])
+    start_pos = np.array([0.375, -0.2, 0.03])
+    end_pos = np.array([0.6, 0.15, 0.03])
 
 # Wrist angle for the exercise. Puts the gripper's motor and cable on top,
 # to keep clear of obstacles.
 WRIST_ANGLE = np.radians(159)
 
-# == end obstacle setup ==
+# == End Obstacle Setup ==
 
 
 # The start and end positions are converted to joint angles below, with the lab interface's inverse_kinematics()
@@ -70,6 +70,7 @@ joint_limits = np.radians(np.array([
         ]))
 joint_limits[:, 3] = WRIST_ANGLE
 
+# helpers is an instance of RRT_Helpers. Call its functions as helpers.function_name(...)
 helpers = RRT_Helpers(obstacles)
 
 mode = "-1"
@@ -86,7 +87,11 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
 
     _, start_phi = QArm_interface.inverse_kinematics(start_pos, WRIST_ANGLE, np.array([0, 0, 0, 0]))
     _, destination_phi = QArm_interface.inverse_kinematics(end_pos, WRIST_ANGLE, np.array([0, 0, 0, 0]))
+    helpers.check_pose(start_phi, start_pos, "start_pos")   # stops with a message if unreachable or colliding
+    helpers.check_pose(destination_phi, end_pos, "end_pos")
 
+    # tree is an instance of RRT_Tree_Manager, starting at start_phi. Attributes are tree.nodes and tree.parents.
+    # Methods include tree.add_node(...), tree.get_nearest_neighbor(...) and tree.get_size()
     tree = RRT_Tree_Manager(start_phi)
 
     QArm_interface.close_gripper()
@@ -142,6 +147,8 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
             The new configuration.
         """
         # == start student section ==
+        # Move step_size radians from q_near toward q_rand
+        # hint: use np.linalg.norm(v)
         pass
         # == end student section ==
 
@@ -168,16 +175,18 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
     # --------------------------------------------------------------------------
     # TODO 4: Main RRT Loop
     # --------------------------------------------------------------------------
-    step_size = 0.1  # in radians
+    # Feel free to tune these for smoother motion
+    step_size = 0.05  # in radians
     success_threshold = step_size * 3
-    path_found = False
     max_iterations = 10000
+
+    path_found = False
 
     for i in range(max_iterations):
         # == start student section ==
         # TODO: one RRT iteration. Sample a configuration, find the nearest node in the tree,
         # take a small step toward the sample, and add the new configuration to the tree if it
-        # is collision-free. If the new node is within success_threshold of destination_phi,
+        # is collision-free. If you added it and it is within success_threshold of destination_phi,
         # set path_found = True and stop the loop with break.
         pass
         # == end student section ==
@@ -194,21 +203,20 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
     path = backtrack(tree.get_size() - 1)   # from the last node added (near the goal) back to the start
     path.reverse()                          # flip the nodes to go from the start to the goal
 
-    # Set the final pose to be the goal, unless the goal pose itself counts as a collision
-    if not helpers.is_configuration_colliding(destination_phi):
-        path.append(destination_phi)
+    # Finish exactly on the goal (check_pose already made sure the goal is collision-free)
+    path.append(destination_phi)
 
     print(f"Path found! {len(path)} tree nodes")
 
-    # straighten the path. Uncomment to remove the wiggle
-    # path = helpers.shortcut_path(path)
+    # Straighten the path. Uncomment to remove the wiggle
+    # path = helpers.shortcut_path(path, step_size)
     
     # 3D plot of the plan. Close the window to run it on the arm
     helpers.plot_path(path)
 
     for node in path:
         QArm_interface.write_to_arm(node)
-        time.sleep(0.2)
+        time.sleep(0.3)
 
-    time.sleep(5)   # let the arm settle at the goal
+    time.sleep(10)   # keep the arm active. Becomes idle and sags after
 

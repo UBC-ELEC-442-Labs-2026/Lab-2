@@ -55,6 +55,8 @@ def numeric_inv_kin(p: np.ndarray, wrist: float, phi_prev: np.ndarray):
     # smaller than success_thresh. Set phi_new = "Fail" if a step breaks the joint
     # limits, or if attempt_limit steps go by without converging.
 
+    # tip: use the three helpers above
+
     # ==  end student section  ==
 
     return phi_new

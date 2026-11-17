@@ -1,3 +1,5 @@
+import sys
+
 import numpy as np
 from scipy.spatial import KDTree
 
@@ -20,6 +22,7 @@ class Cylinder_Obstacle:
         self.R = R
 
     def get_obs(self):
+        """The obstacle as [Q1, Q2, R]."""
         return np.array([self.Q1, self.Q2, self.R])
 
 
@@ -55,6 +58,7 @@ class RRT_Helpers:
     MIN_TIP_Z0 = 0.015         # lowest fingertip height (m, frame {0}); same as QArm_calibration.MIN_TIP_Z0
 
     def __init__(self, obstacles):
+        """obstacles: list of Cylinder_Obstacle."""
         self.myArmUtilities = QArmUtilities()
         self.joint_limits = np.radians(np.array([
             np.array([-170.0, -85.0, -95.0, -160.0]),
@@ -67,6 +71,14 @@ class RRT_Helpers:
         self.obstacles = obstacles
         
     def get_joint_positions(self, phi):
+        """
+        Positions of the arm's joints for joint angles phi, in frame {0}.
+
+        Returns
+        -------
+        list of 5 np.ndarray, shape (3,)
+            [base, shoulder, elbow, wrist frame {3}, end effector frame {4}]
+        """
 
         def quanser_arm_DH(a, alpha, d, theta):
             """ QUANSER_ARM_DH
@@ -228,6 +240,21 @@ class RRT_Helpers:
 
         return False  # safe configuration
 
+    def check_pose(self, phi: np.ndarray, target_pos: np.ndarray, name: str) -> None:
+        """
+        Stop the program with a message if phi doesn't put the tip at target_pos (the inverse
+        kinematics failed), or if the arm would collide there. Use it on the start and the goal.
+        """
+        tip = self.get_joint_positions(np.asarray(phi, dtype=float))[4]
+
+        # Quanser's inverse_kinematics returns [0, 0, 0, 0] when it finds no valid solution
+        if np.linalg.norm(tip - target_pos) > 0.01:
+            sys.exit(f"{name} = {target_pos} can't be reached by the arm. Move it.")
+
+        if self.is_configuration_colliding(phi):
+            sys.exit(f"At {name} = {target_pos} the arm would hit an obstacle, the table or a "
+                     f"joint limit (in the collision model). Move it.")
+
     def shortcut_path(self, path: list[np.ndarray], step_size: float = 0.1) -> list[np.ndarray]:
         """
         Remove the random detours from an RRT path: from each point, jump straight to the
@@ -328,6 +355,9 @@ class RRT_Helpers:
         ax.set_box_aspect((1.0, 1.0, 0.811))   # same scale on all three axes
         ax.set_title(title or "Planned path (close this window to run it)", fontsize=10)
         ax.legend(loc="upper left", fontsize=8)
+
+        print("A 3D plot has opened. It may be behind other windows or only in the taskbar. "
+              "Close it to continue.")
         plt.show()
 
     def is_outside_joint_limits(self, phi):
@@ -352,6 +382,7 @@ class RRT_Tree_Manager:
     its parent is None.
     """
     def __init__(self, start_phi):
+        """Start a tree with one node, the root: start_phi."""
         # nodes[i] is node i's joint configuration
         self.nodes: list[np.ndarray] = [np.array(start_phi)]
         # parents[i] is the index of node i's parent (None for the root)

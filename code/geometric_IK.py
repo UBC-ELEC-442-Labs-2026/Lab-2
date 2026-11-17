@@ -118,7 +118,13 @@ def geometric_inv_kin(p: np.ndarray, wrist: float, phi_prev: np.ndarray):
     #   2. of those, is the closest (np.linalg.norm).
     # If those conditions cannot be met, set phi_best = "Fail".
 
-    phi_best = phi_candidates[:, 0]   # placeholder
+    # tip: Use the Python Reference, section 1.4 of the Lab PDF
+
+    # hint: chained comparisons, (a < b < c), don't work on NumPy arrays,
+    # compare the sides separately and combine the results
+
+    # Placeholder: Sets phi_best to the first column of phi_candidates
+    phi_best = phi_candidates[:, 0]
 
     # ==  end student section  ==
 
@@ -147,5 +153,6 @@ if __name__ == "__main__":
         phi_candidates, phi_best = geometric_inv_kin(np.array(p), wrist, np.array(phi_prev))
         print("phi_candidates:")
         print(phi_candidates)
-        print("phi_best:", phi_best)
+        print("phi_best:")
+        print(phi_best)
         print()
