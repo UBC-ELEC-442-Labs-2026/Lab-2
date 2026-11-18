@@ -7,7 +7,7 @@ PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
-from helpers.numeric_inv_kin_helpers import Numeric_IK_helper
+from helpers.numerical_IK_helpers import Numeric_IK_helper
 
 # End of imports
 

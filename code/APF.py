@@ -13,7 +13,7 @@ if PROJECT_ROOT not in sys.path:
     sys.path.insert(0, PROJECT_ROOT)
 
 from helpers.RRT_helpers import Cylinder_Obstacle
-from helpers.potential_fields_helpers import Potential_Fields_helper
+from helpers.APF_helpers import Potential_Fields_helper
 
 
 # Import the QArm interface class
