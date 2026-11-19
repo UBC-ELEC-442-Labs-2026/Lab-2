@@ -36,7 +36,7 @@ SETUP = 1
 # above the cardboard playspace, or "table" for short. Thus the table is at z = TABLE_Z0.
 TABLE_Z0 = -0.011
 # Consequently,
-# z = height above the table + TABLE_Z0 and therefore height above the table > z
+# z = height above the table + TABLE_Z0 and therefore height above the table = z + 0.011
 
 if SETUP == 1:
     # One large pillar (310 mm tall) between the start and the end
