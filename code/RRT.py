@@ -32,9 +32,11 @@ from QArm_functions import QArm_Lab_interface #type: ignore
 # Choose the obstacle setup: 1 or 2 (see the Obstacle Setup figures in the Lab 2 PDF)
 SETUP = 1
 
-# Heights are measured with respect to the bottom of the arm's base, which sits on a plate 11mm
-# above the cardboard, thus the table is at z = TABLE_Z0.
+# Heights (z) are measured with respect to the bottom of the arm's base, which sits on a plate 11mm
+# above the cardboard playspace, or "table" for short. Thus the table is at z = TABLE_Z0.
 TABLE_Z0 = -0.011
+# Consequently,
+# z = height above the table + TABLE_Z0 and therefore height above the table > z
 
 if SETUP == 1:
     # One large pillar (310 mm tall) between the start and the end
