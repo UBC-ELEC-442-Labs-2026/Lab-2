@@ -55,7 +55,7 @@ class RRT_Helpers:
     GRIPPER_BODY_END = 0.148   # m back from the fingertip where the gripper body starts
     FINGERS_END = 0.086        # m back from the fingertip where the fingers start
     SAFETY_MARGIN = 0.01       # extra gap every part of the arm keeps from the obstacles (m)
-    MIN_TIP_Z0 = 0.015         # lowest fingertip height (m, frame {0}); same as QArm_calibration.MIN_TIP_Z0
+    MIN_TIP_Z0 = 0.011         # lowest fingertip height (m, frame {0}); same as QArm_calibration.MIN_TIP_Z0
 
     def __init__(self, obstacles):
         """obstacles: list of Cylinder_Obstacle."""
