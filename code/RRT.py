@@ -186,10 +186,10 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
 
     for i in range(max_iterations):
         # == start student section ==
-        # TODO: one RRT iteration. Sample a configuration, find the nearest node in the tree,
-        # take a small step toward the sample, and add the new configuration to the tree if it
-        # is collision-free. If you added it and it is within success_threshold of destination_phi,
-        # set path_found = True and stop the loop with break.
+        # TODO: one RRT iteration. Sample a configuration, find the nearest node in the tree to that 
+        # sample configuration, then take a small step toward the sample, and add the new configuration 
+        # to the tree if it is collision-free. If you added it and it is within success_threshold of 
+        # destination_phi, set path_found = True and stop the loop with break.
         pass
         # == end student section ==
 
