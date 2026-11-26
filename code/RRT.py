@@ -123,7 +123,7 @@ with QArm(hardware=int(mode), readMode=0) as myArm:
         # between its limits (joint_limits[0] has the minimums, joint_limits[1] the maximums).
         # np.random.random() and np.random.uniform(low, high) will help here.
         probability = np.random.random()
-        die_outcome = round(np.random.uniform(0.5, 6.5))
+        die_outcome = round(np.random.uniform(0.5, 6.5)) # examples
         pass
         # == end student section ==
 
